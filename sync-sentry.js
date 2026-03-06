@@ -242,7 +242,8 @@ function createIssueBody(issue, event) {
 }
 
 async function createGitHubIssue(issue, event) {
-  const issueTitle = `[Sentry] ${issue.title.split('\n')[0]}`;
+  const titleWithoutNewline = issue.title.split('\n')[0];
+  const issueTitle = `[Sentry] ${titleWithoutNewline} [ID:${issue.id}]`;
   const body = createIssueBody(issue, event);
   
   const issueData = {
@@ -270,14 +271,18 @@ async function syncIssues() {
   
   console.log(`Found ${issues.length} unresolved issues`);
   
-  const state = loadState();
-  const newIssues = [];
-  
-  for (const issue of issues) {
-    if (!state.synced_issues[issue.id]) {
-      newIssues.push(issue);
+  console.log('Checking for existing GitHub issues...');
+  const existingIssues = await fetchGitHub(`/repos/${GITHUB_REPO}/issues?state=all&per_page=100`);
+  const existingSentryIds = new Set();
+  for (const issue of existingIssues) {
+    const match = issue.title.match(/\[Sentry\]\s*.*\[ID:(\d+)\]/);
+    if (match) {
+      existingSentryIds.add(match[1]);
     }
   }
+  console.log(`Found ${existingSentryIds.size} existing synced issues`);
+  
+  const newIssues = issues.filter(issue => !existingSentryIds.has(issue.id));
   
   console.log(`New issues to sync: ${newIssues.length}`);
   
@@ -291,7 +296,6 @@ async function syncIssues() {
       const event = await fetchSentry(`/issues/${issue.id}/events/latest/`);
       const issueNumber = await createGitHubIssue(issue, event);
       
-      state.synced_issues[issue.id] = issueNumber;
       created++;
       console.log(`  -> Created GitHub issue #${issueNumber}`);
     } catch (err) {
@@ -300,13 +304,9 @@ async function syncIssues() {
     }
   }
   
-  state.last_sync = new Date().toISOString();
-  saveState(state);
-  
   console.log(`\nSync complete:`);
   console.log(`- Created: ${created}`);
   console.log(`- Errors: ${errors}`);
-  console.log(`- Total synced: ${Object.keys(state.synced_issues).length}`);
 }
 
 syncIssues().catch(console.error);
