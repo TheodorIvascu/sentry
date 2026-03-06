@@ -265,18 +265,25 @@ async function syncIssues() {
   
   console.log(`Found ${issues.length} unresolved issues`);
   
-  console.log('Checking for existing GitHub issues...');
-  const existingIssues = await fetchGitHub(`/repos/${GITHUB_REPO}/issues?state=all&per_page=100`);
-  const existingSentryIds = new Set();
-  for (const issue of existingIssues) {
-    const match = issue.title.match(/\[Sentry\]\s*.*\[ID:(\d+)\]/);
-    if (match) {
-      existingSentryIds.add(match[1]);
-    }
-  }
-  console.log(`Found ${existingSentryIds.size} existing synced issues`);
+  const FORCE_SYNC = process.env.FORCE_SYNC === 'true';
   
-  const newIssues = issues.filter(issue => !existingSentryIds.has(issue.id));
+  let newIssues = issues;
+  
+  if (!FORCE_SYNC) {
+    console.log('Checking for existing GitHub issues...');
+    const existingIssues = await fetchGitHub(`/repos/${GITHUB_REPO}/issues?state=all&per_page=100`);
+    const existingSentryIds = new Set();
+    for (const issue of existingIssues) {
+      const match = issue.title.match(/\[Sentry\]\s*.*\[ID:(\d+)\]/);
+      if (match) {
+        existingSentryIds.add(match[1]);
+      }
+    }
+    console.log(`Found ${existingSentryIds.size} existing synced issues`);
+    newIssues = issues.filter(issue => !existingSentryIds.has(issue.id));
+  } else {
+    console.log('FORCE_SYNC enabled - syncing all issues');
+  }
   
   console.log(`New issues to sync: ${newIssues.length}`);
   
