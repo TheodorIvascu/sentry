@@ -4,7 +4,7 @@ const path = require('path');
 const SENTRY_ORG = 'sebastian-boga';
 const SENTRY_PROJECT = '4509440197263440';
 const SENTRY_TOKEN = process.env.SENTRY_TOKEN;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub token
 
 const STATE_FILE = path.join(__dirname, '.github', 'sentry-sync-state.json');
 const TEMPLATE_FILE = path.join(__dirname, '.github', 'ISSUE_TEMPLATE', 'sentry-bug.md');
