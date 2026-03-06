@@ -53,19 +53,21 @@ function extractStackTrace(event) {
   for (const entry of entries) {
     if (entry.type === 'exception' && entry.data?.values) {
       const exc = entry.data.values[0];
-      if (exc.stacktrace?.frames) {
-        const allFrames = exc.stacktrace.frames;
-        
+      const frames = exc.stacktrace?.frames || exc.rawStacktrace?.frames || [];
+      
+      if (frames.length > 0) {
         let result = '';
         if (exc.type && exc.value) {
           result += `${exc.type}: ${exc.value}\n\n`;
         }
         
-        result += allFrames
+        result += frames
           .map(f => {
-            const filename = f.filename ? f.filename.split('/').pop() : '?';
+            const filename = f.filename ? f.filename.split('/').pop() : f.absPath ? f.absPath : '?';
             const func = f.function || 'anonymous';
-            return `  at ${func} (${filename}:${f.lineNo || '?'})`;
+            const line = f.lineNo || '?';
+            const col = f.colNo ? `:${f.colNo}` : '';
+            return `  at ${func} (${filename}:${line}${col})`;
           })
           .join('\n');
         
