@@ -1,0 +1,39 @@
+name: Sentry to GitHub Issues Sync
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6AM UTC
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Sync Sentry issues to GitHub
+        env:
+          SENTRY_TOKEN: ${{ secrets.SENTRY_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: node sync-sentry.js
+
+      - name: Commit state file changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync Sentry issues state"
+          file_pattern: ".github/sentry-sync-state.json"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
