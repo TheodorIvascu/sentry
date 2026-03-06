@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SENTRY_ORG = 'sebastian-boga'; // Organization
+const SENTRY_ORG = 'sebastian-boga';
 const SENTRY_PROJECT = '4509440197263440';
 const SENTRY_TOKEN = process.env.SENTRY_TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;

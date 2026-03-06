@@ -32,11 +32,3 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: node sync-sentry.js
-
-      - name: Commit state file changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: sync Sentry issues state"
-          file_pattern: ".github/sentry-sync-state.json"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
