@@ -55,25 +55,19 @@ function extractStackTrace(event) {
       const exc = entry.data.values[0];
       if (exc.stacktrace?.frames) {
         const allFrames = exc.stacktrace.frames;
-        const inAppFrames = allFrames.filter(f => f.inApp);
-        const recentFrames = inAppFrames.slice(-15);
         
         let result = '';
         if (exc.type && exc.value) {
           result += `${exc.type}: ${exc.value}\n\n`;
         }
         
-        result += recentFrames
+        result += allFrames
           .map(f => {
             const filename = f.filename ? f.filename.split('/').pop() : '?';
             const func = f.function || 'anonymous';
             return `  at ${func} (${filename}:${f.lineNo || '?'})`;
           })
           .join('\n');
-        
-        if (inAppFrames.length > 15) {
-          result += `\n  ... and ${inAppFrames.length - 15} more frames`;
-        }
         
         return result;
       }
