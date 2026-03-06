@@ -70,12 +70,13 @@ function extractStackTrace(event) {
 
 function extractTags(event) {
   const tags = event.tags || [];
-  if (tags.length === 0) return '-';
+  if (tags.length === 0) return '_No tags_';
   const tagMap = {};
   for (const t of tags) {
     tagMap[t.key] = t.value;
   }
-  return Object.entries(tagMap).map(([k, v]) => `- **${k}:** ${v}`).join('\n');
+  const rows = Object.entries(tagMap).map(([k, v]) => `| ${k} | ${v} |`).join('\n');
+  return '| Tag | Value |\n|---|---|\n' + rows;
 }
 
 function extractRequest(event) {
@@ -98,15 +99,16 @@ function extractRequest(event) {
 
 function extractUserContext(event) {
   const user = event.user || {};
-  if (!user.ip_address && !user.email && !user.id) return '-';
+  if (!user.ip_address && !user.email && !user.id && !user.geo?.city) return '_No user context_';
   
-  let result = '';
-  if (user.ip_address) result += `- **IP:** ${user.ip_address}\n`;
-  if (user.email) result += `- **Email:** ${user.email}\n`;
-  if (user.id) result += `- **User ID:** ${user.id}\n`;
-  if (user.geo?.city) result += `- **City:** ${user.geo.city}\n`;
-  if (user.geo?.country_code) result += `- **Country:** ${user.geo.country_code}\n`;
-  return result || '-';
+  const rows = [];
+  if (user.ip_address) rows.push(`| **IP** | ${user.ip_address} |`);
+  if (user.email) rows.push(`| **Email** | ${user.email} |`);
+  if (user.id) rows.push(`| **User ID** | ${user.id} |`);
+  if (user.geo?.city) rows.push(`| **City** | ${user.geo.city} |`);
+  if (user.geo?.country_code) rows.push(`| **Country** | ${user.geo.country_code} |`);
+  
+  return rows.length > 0 ? '| Field | Value |\n|---|---|\n' + rows.join('\n') : '_No user context_';
 }
 
 function extractEnvironment(event) {
@@ -218,16 +220,11 @@ function createIssueBody(issue, event) {
 }
 
 async function createGitHubIssue(issue, event) {
-  let template = fs.readFileSync(TEMPLATE_FILE, 'utf8');
-  
-  const titleMatch = template.match(/title:\s*'([^']+)'/);
-  const issueTitle = titleMatch ? titleMatch[1] : '[Sentry] Bug';
-  const finalTitle = issueTitle.replace('{{TITLE}}', issue.title.split('\n')[0]);
-  
+  const issueTitle = `[Sentry] ${issue.title.split('\n')[0]}`;
   const body = createIssueBody(issue, event);
   
   const issueData = {
-    title: finalTitle,
+    title: issueTitle,
     body,
     labels: ['sentry', 'bug']
   };
