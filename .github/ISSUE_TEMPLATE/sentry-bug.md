@@ -1,14 +1,14 @@
-### 📛 Summary
+### Summary
 {{SUMMARY}}
 
 ---
 
-### ⚠️ Steps to Reproduce
+### Steps to Reproduce
 {{STEPS_TO_REPRODUCE}}
 
 ---
 
-### 🔴 Severity
+### Severity
 | Field | Value |
 |-------|-------|
 | **Level** | {{LEVEL}} |
@@ -18,7 +18,7 @@
 
 ---
 
-### 🔍 Sentry Info
+### Sentry Info
 | Field | Value |
 |-------|-------|
 | **ID** | `{{ID}}` |
@@ -35,7 +35,7 @@
 
 ---
 
-### 💥 Error Details
+### Error Details
 | Field | Value |
 |-------|-------|
 | **Type** | {{ERROR_TYPE}} |
@@ -45,12 +45,12 @@
 
 ---
 
-### 👤 User Context
+### User Context
 {{USER_CONTEXT}}
 
 ---
 
-### 🖥️ Environment
+### Environment
 | Field | Value |
 |-------|-------|
 | **Browser** | {{BROWSER}} |
@@ -62,22 +62,22 @@
 
 ---
 
-### 🏷️ Tags
+### Tags
 {{TAGS}}
 
 ---
 
-### 🍞 Breadcrumbs ({{BREADCRUMB_COUNT}})
+### Breadcrumbs ({{BREADCRUMB_COUNT}})
 {{BREADCRUMBS}}
 
 ---
 
-### 📚 Stack Trace
+### Stack Trace
 ```
 {{STACK_TRACE}}
 ```
 
 ---
 
-### 📡 Request
+### Request
 {{REQUEST}}
