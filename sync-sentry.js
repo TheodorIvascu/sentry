@@ -147,12 +147,20 @@ function extractBreadcrumbs(event) {
   for (const entry of entries) {
     if (entry.type === 'breadcrumbs' && entry.data?.values) {
       const crumbs = entry.data.values
-        .filter(c => c.category === 'ui.click' || c.category === 'fetch' || c.category === 'navigation' || c.category === 'ui.input')
+        .filter(c => c.category === 'ui.click' || c.category === 'fetch' || c.category === 'http' || c.category === 'navigation' || c.category === 'ui.input')
         .slice(-100)
         .map(c => {
-          const msg = c.message || c.type || '';
           const timestamp = c.timestamp ? c.timestamp.split('T')[1].split('.')[0] : '';
-          return `- [${timestamp}] [${c.category}] ${msg.substring(0, 200)}`;
+          
+          if (c.category === 'fetch' || c.category === 'http') {
+            const method = c.data?.method || 'GET';
+            const url = c.data?.url || c.message || '-';
+            const status = c.data?.status_code || '-';
+            return `- [${timestamp}] [${c.category}] ${method} ${url} [${status}]`;
+          }
+          
+          const msg = c.message || c.type || '';
+          return `- [${timestamp}] [${c.category}] ${msg.substring(0, 150)}`;
         })
         .join('\n');
       return crumbs || '-';
