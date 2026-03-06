@@ -131,9 +131,13 @@ function extractBreadcrumbs(event) {
   for (const entry of entries) {
     if (entry.type === 'breadcrumbs' && entry.data?.values) {
       const crumbs = entry.data.values
-        .filter(c => c.category === 'ui.click' || c.category === 'fetch')
-        .slice(-10)
-        .map(c => `- [${c.category}] ${c.message || c.type}`)
+        .filter(c => c.category === 'ui.click' || c.category === 'fetch' || c.category === 'navigation' || c.category === 'ui.input')
+        .slice(-100)
+        .map(c => {
+          const msg = c.message || c.type || '';
+          const timestamp = c.timestamp ? c.timestamp.split('T')[1].split('.')[0] : '';
+          return `- [${timestamp}] [${c.category}] ${msg.substring(0, 200)}`;
+        })
         .join('\n');
       return crumbs || '-';
     }
@@ -202,8 +206,11 @@ function createIssueBody(issue, event) {
   template = template.replaceAll('{{IP_ADDRESS}}', extractIP(event));
   template = template.replaceAll('{{LOCATION}}', extractLocation(event));
   
+  const breadcrumbs = extractBreadcrumbs(event);
+  const breadcrumbCount = (event.entries?.find(e => e.type === 'breadcrumbs')?.data?.values?.length) || 0;
   template = template.replaceAll('{{TAGS}}', extractTags(event));
-  template = template.replaceAll('{{BREADCRUMBS}}', extractBreadcrumbs(event));
+  template = template.replaceAll('{{BREADCRUMB_COUNT}}', breadcrumbCount);
+  template = template.replaceAll('{{BREADCRUMBS}}', breadcrumbs);
   template = template.replaceAll('{{STACK_TRACE}}', extractStackTrace(event));
   template = template.replaceAll('{{REQUEST}}', extractRequest(event));
   

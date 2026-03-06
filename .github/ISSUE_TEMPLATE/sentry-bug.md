@@ -52,7 +52,7 @@ assignees: ''
 ## Tags
 {{TAGS}}
 
-## Breadcrumbs
+## Breadcrumbs ({{BREADCRUMB_COUNT}})
 {{BREADCRUMBS}}
 
 ## Stack Trace
