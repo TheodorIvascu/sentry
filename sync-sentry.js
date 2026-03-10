@@ -6,7 +6,6 @@ const SENTRY_PROJECT = '4509440197263440';
 const SENTRY_TOKEN = process.env.SENTRY_TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub token
 
-const STATE_FILE = path.join(__dirname, '.github', 'sentry-sync-state.json');
 const TEMPLATE_FILE = path.join(__dirname, '.github', 'ISSUE_TEMPLATE', 'sentry-bug.md');
 const API_BASE = `https://sentry.io/api/0/organizations/${SENTRY_ORG}`;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'Theodor Ivascu/sentry';
@@ -35,17 +34,6 @@ async function fetchGitHub(endpoint, method = 'GET', body = null) {
     throw new Error(`GitHub API error: ${res.status} - ${text}`);
   }
   return res.json();
-}
-
-function loadState() {
-  if (fs.existsSync(STATE_FILE)) {
-    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-  }
-  return { last_sync: null, synced_issues: {} };
-}
-
-function saveState(state) {
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
 function extractStackTrace(event) {
