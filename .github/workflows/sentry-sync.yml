@@ -38,4 +38,5 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
           FORCE_SYNC: ${{ github.event.inputs.force_sync == 'true' && 'true' || '' }}
+          NODE_NO_WARNINGS: '1'
         run: node sync-sentry.js
