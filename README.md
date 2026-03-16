@@ -4,6 +4,37 @@ Automated synchronization tool that imports Sentry errors into GitHub Issues.
 
 ---
 
+## How It Works | Cum Funcționează
+
+### The Flow | Flow-ul
+
+```
+Utilizator → Aplicație → Sentry → GitHub Actions → Script → GitHub Issues
+     │                                           
+     │ are eroare                                
+     ▼                                           
+Sentry prinde eroarea                           
+```
+
+### Step by Step | Pas cu Pas
+
+1. **Utilizator are eroare** - Când utilizatorul folosește aplicația și apare o eroare
+2. **Sentry o prinde** - Sentry colectează automat eroarea cu context (stack trace, user info, breadcrumbs)
+3. **GitHub Actions rulează** - Zilnic sau manual, workflow-ul pornește scriptul
+4. **Scriptul preia erorile** - Se conectează la Sentry API și preia toate erorile nerezolvate
+5. **Creează issue-uri** - Pentru fiecare eroare, creează un issue în GitHub cu toate detaliile
+
+### What data is synced? | Ce date se sincronizează?
+
+- **Stack trace** - Codul care a generat eroarea
+- **User info** - IP, locație, dispozitiv
+- **Environment** - Browser, OS, versiune
+- **Breadcrumbs** - Ce a făcut utilizatorul înainte de eroare
+- **Tags** - Informații extra
+- **Request** - Ce pagină, ce referer
+
+---
+
 ## English
 
 ### Overview
