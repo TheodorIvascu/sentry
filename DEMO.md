@@ -2,7 +2,19 @@
 
 ## Overview
 
-This is an automated synchronization tool that imports Sentry error/issues into GitHub Issues. It runs as a GitHub Action and creates detailed GitHub issues with full error context from Sentry.
+An automated synchronization tool that imports Sentry errors/issues into GitHub Issues. Runs as a GitHub Action and creates detailed GitHub issues with full error context from Sentry.
+
+---
+
+## Features
+
+- **Automatic Sync**: Runs daily via GitHub Actions scheduler
+- **Manual Trigger**: Can be triggered manually with optional force sync
+- **Deduplication**: Skips already synced issues
+- **Rich Issue Details**: Full error context including stack traces, user info, breadcrumbs
+- **No Dependencies**: Uses built-in Node.js `fetch` API (no npm packages needed)
+- **Rate Limiting**: Handles GitHub/Sentry API rate limits with retry logic
+- **Concurrency**: Processes multiple issues in parallel
 
 ---
 
@@ -11,27 +23,21 @@ This is an automated synchronization tool that imports Sentry error/issues into 
 ```
 sentry/
 ├── sync-sentry.js              # Main Node.js sync script
-├── package.json                 # Project dependencies
+├── package.json                 # Project metadata
 ├── .gitignore                  # Git ignore rules
+├── DEMO.md                     # This documentation
 └── .github/
     ├── workflows/
-    │   └── sentry-sync.yml     # GitHub Actions workflow
+    │   └── sentry-sync.yml    # GitHub Actions workflow
     └── ISSUE_TEMPLATE/
-        └── sentry-bug.md       # GitHub Issue template
+        └── sentry-bug.md      # GitHub Issue template
 ```
 
 ---
 
-## How It Works
+## Architecture
 
-### 1. Workflow Trigger
-
-The sync runs automatically via GitHub Actions:
-- **Scheduled**: Daily at 6:00 AM UTC
-- **Manual**: Can be triggered via workflow_dispatch
-- **On Push**: Runs when changes are pushed to main branch
-
-### 2. Sync Process Flow
+### How It Works
 
 ```
 ┌─────────────────────┐
@@ -54,6 +60,7 @@ The sync runs automatically via GitHub Actions:
           ▼
 ┌─────────────────────┐
 │  For Each Issue:    │
+│  - Get Full Issue   │ (Parallel)
 │  - Get Latest Event │
 │  - Extract Details  │
 │  - Create GitHub    │
@@ -61,12 +68,39 @@ The sync runs automatically via GitHub Actions:
 └─────────────────────┘
 ```
 
-### 3. Data Extraction
+### API Integration
 
-The script extracts comprehensive information from Sentry events:
+#### Sentry API
+- **Base URL**: `https://sentry.io/api/0/organizations/{org}`
+- **Endpoints Used**:
+  - `/issues/?project={id}&query=is:unresolved` - List unresolved issues
+  - `/issues/{id}/` - Get full issue details (count, dates, etc.)
+  - `/issues/{id}/events/latest/` - Get latest event (stack trace, breadcrumbs)
+- **Authentication**: Bearer token via `Authorization` header
+- **Rate Limits**: Handled with retry logic
 
-| Extraction Function | Data Extracted |
-|---------------------|----------------|
+#### GitHub API
+- **Base URL**: `https://api.github.com`
+- **Endpoints Used**:
+  - `/repos/{owner}/{repo}/issues` - Create new issue
+  - `/repos/{owner}/{repo}/issues?state=all` - List all issues (for deduplication)
+- **Authentication**: Bearer token via `Authorization` header
+- **Rate Limits**: Handled with retry and backoff
+
+### Data Flow
+
+1. **Fetch Issues**: Query Sentry for unresolved issues in the project
+2. **Deduplicate**: Check existing GitHub issues for Sentry ID markers
+3. **Parallel Processing**: Fetch issue details + event data concurrently
+4. **Extract Data**: Parse stack traces, user context, breadcrumbs, tags
+5. **Create Issue**: POST to GitHub with formatted template
+
+---
+
+## Data Extraction Functions
+
+| Function | Data Extracted |
+|----------|----------------|
 | `extractStackTrace()` | Error type, value, file locations, function names |
 | `extractTags()` | Sentry tags in table format |
 | `extractRequest()` | URL, HTTP method, referrer |
@@ -78,12 +112,28 @@ The script extracts comprehensive information from Sentry events:
 | `extractURL()` | URL tag |
 | `extractIP()` | User IP address |
 
-### 4. Issue Creation
+---
 
-Each synced issue includes:
+## Issue Template
+
+Each synced GitHub issue includes:
+
+### Header
 - **Title**: `[Sentry] {error title} [ID:{issue_id}]`
 - **Labels**: `sentry`, `bug`
-- **Body**: Full issue details from the template
+
+### Body Sections
+1. **Summary**: Error title/description
+2. **Steps to Reproduce**: Generic placeholder
+3. **Severity**: Level, Priority, Type, Category
+4. **Sentry Info**: ID, Short ID, Count, User Count, First/Last Seen, Culprit, Status, Project, Platform, Link
+5. **Error Details**: Type, Value, Filename, Function
+6. **User Context**: IP, Email, User ID, City, Country
+7. **Environment**: Browser, OS, Release, URL, IP, Location
+8. **Tags**: All Sentry tags in table format
+9. **Breadcrumbs**: Last 100 user actions (filtered by category)
+10. **Stack Trace**: Full error stack trace
+11. **Request**: HTTP request details (URL, Method, Referer)
 
 ---
 
@@ -91,81 +141,76 @@ Each synced issue includes:
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SENTRY_TOKEN` | Yes | Sentry API authentication token |
-| `GITHUB_TOKEN` | Yes | GitHub token (provided by GitHub Actions) |
-| `GITHUB_REPO` | No | Target repository (format: `owner/repo`) |
-| `FORCE_SYNC` | No | If `true`, syncs all issues ignoring existing ones |
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `SENTRY_TOKEN` | Yes | Sentry API token | - |
+| `GITHUB_TOKEN` | Yes | GitHub API token | - |
+| `SENTRY_ORG` | No | Sentry organization | `sebastian-boga` |
+| `SENTRY_PROJECT` | No | Sentry project ID | `4509440197263440` |
+| `GITHUB_REPO` | No | Target repository | `Theodor Ivascu/sentry` |
+| `FORCE_SYNC` | No | Sync all issues | `false` |
+| `CONCURRENCY_LIMIT` | No | Max parallel requests | `5` |
+| `BREADCRUMB_CATEGORIES` | No | Breadcrumb filter | `ui.click,fetch,http,navigation,ui.input` |
 
-### Script Constants (sync-sentry.js)
+### Command Line Options
 
-```javascript
-const SENTRY_ORG = 'sebastian-baga';       // Sentry organization
-const SENTRY_PROJECT = '4509440197263440'; // Sentry project ID
-const GITHUB_REPO = process.env.GITHUB_REPO || 'Theodor Ivascu/sentry';
+```bash
+node sync-sentry.js [options]
+
+Options:
+  -d, --dry-run           Preview without creating issues
+  -f, --force-sync        Sync all issues ignoring existing
+  -o, --org <name>        Sentry organization
+  -p, --project <id>      Sentry project ID
+  -r, --repo <owner/repo> GitHub repository
+  -h, --help              Show help
 ```
 
----
+### Script Constants
 
-## Issue Template Fields
-
-The GitHub issue template (`sentry-bug.md`) includes:
-
-### Summary Section
-- Error summary/title
-
-### Severity Info
-- Level (error, warning, etc.)
-- Priority
-- Issue Type
-- Category
-
-### Sentry Info
-- Issue ID, Short ID
-- Count, User Count
-- First Seen, Last Seen
-- Culprit, Status
-- Project Name, Platform
-- Link to Sentry
-
-### Error Details
-- Error Type, Value
-- Filename, Function
-
-### User Context
-- IP Address, Email, User ID
-- City, Country
-
-### Environment
-- Browser, OS
-- Release, URL
-- IP, Location
-
-### Additional Data
-- Tags (table format)
-- Breadcrumbs (last 100)
-- Stack Trace
-- HTTP Request details
+```javascript
+const SENTRY_ORG = 'sebastian-boga';
+const SENTRY_PROJECT = '4509440197263440';
+const GITHUB_REPO = 'Theodor Ivascu/sentry';
+```
 
 ---
 
 ## GitHub Actions Workflow
 
 ```yaml
-# Triggers
+name: Sentry to GitHub Issues Sync
+
 on:
   schedule:
     - cron: '0 6 * * *'  # Daily at 6AM UTC
-  workflow_dispatch:      # Manual trigger
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force sync all issues'
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
 
-# Permissions
-permissions:
-  issues: write
-  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: npm install
+      - run: node sync-sentry.js
+        env:
+          SENTRY_TOKEN: ${{ secrets.SENTRY_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
 ```
 
 ---
@@ -176,33 +221,35 @@ permissions:
 # Install dependencies
 npm install
 
-# Run sync
-SENTRY_TOKEN=your_token GITHUB_TOKEN=your_token node sync-sentry.js
+# Basic sync
+SENTRY_TOKEN=xxx GITHUB_TOKEN=xxx node sync-sentry.js
 
-# Force sync all issues
-FORCE_SYNC=true SENTRY_TOKEN=your_token GITHUB_TOKEN=your_token node sync-sentry.js
+# Force sync all (ignore existing)
+FORCE_SYNC=true SENTRY_TOKEN=xxx GITHUB_TOKEN=xxx node sync-sentry.js
+
+# Dry run (preview)
+node sync-sentry.js --dry-run
+
+# With custom org/project/repo
+node sync-sentry.js --org my-org --project 12345 --repo owner/repo
 ```
-
----
-
-## Cleanup Performed
-
-The following unused code was removed:
-- `loadState()` function (never called)
-- `saveState()` function (never called)
-- `STATE_FILE` constant (unused)
-- `sentry-sync-state.json` file (unused)
-- Updated `.gitignore` with proper entries
 
 ---
 
 ## Dependencies
 
-- **Node.js**: >= 18
-- **No external npm packages** - Uses built-in `fetch` API (Node 18+)
+- **Node.js**: >= 18 (GitHub Actions uses v24)
+- **No external packages**: Uses built-in `fetch` API
 
 ---
 
 ## Summary
 
-This tool provides a seamless bridge between Sentry error tracking and GitHub issue management. When errors occur in your application, they are automatically captured by Sentry, and this sync tool creates detailed GitHub issues with full context including stack traces, user information, environment details, and breadcrumb trails - making it easier for developers to track and resolve issues directly from their GitHub workflow.
+This tool bridges Sentry error tracking with GitHub issue management. Errors captured by Sentry automatically become detailed GitHub issues with:
+- Full stack traces
+- User context (IP, location)
+- Environment details (browser, OS, device)
+- Breadcrumb trails showing user actions
+- Tags and request information
+
+This makes it easier for developers to track and resolve issues directly from their GitHub workflow.
