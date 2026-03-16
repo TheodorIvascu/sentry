@@ -445,14 +445,17 @@ async function processIssue(issue) {
   try {
     console.log(`Syncing issue ${issue.id}: ${issue.title}`);
     
-    const event = await fetchSentry(`/issues/${issue.id}/events/latest/`);
+    const [event, fullIssue] = await Promise.all([
+      fetchSentry(`/issues/${issue.id}/events/latest/`),
+      fetchSentry(`/issues/${issue.id}/`)
+    ]);
     
     if (dryRunMode) {
       console.log(`  -> [DRY RUN] Would create issue: ${issue.title}`);
       return { success: true, dryRun: true, issueId: issue.id };
     }
     
-    const issueNumber = await createGitHubIssue(issue, event);
+    const issueNumber = await createGitHubIssue(fullIssue, event);
     
     console.log(`  -> Created GitHub issue #${issueNumber}`);
     return { success: true, issueNumber, issueId: issue.id };
